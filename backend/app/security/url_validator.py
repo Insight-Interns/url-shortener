@@ -37,6 +37,8 @@ BLOCKED_IP_NETWORKS = [
     ipaddress.ip_network("ff00::/8"),           # Multicast
 ]
 
+NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
+
 
 def is_ip_blocked(ip_str: str) -> bool:
     """Checks whether an IP address literal falls into private, loopback, or metadata ranges."""
@@ -45,6 +47,11 @@ def is_ip_blocked(ip_str: str) -> bool:
     except ValueError:
         # Not an IP literal (it's a domain name)
         return False
+
+    # Handle NAT64 well-known prefix (RFC 6052) by verifying embedded IPv4
+    if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj in NAT64_PREFIX:
+        embedded_ipv4 = ipaddress.IPv4Address(ip_obj.packed[-4:])
+        return is_ip_blocked(str(embedded_ipv4))
 
     if ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved:
         return True

@@ -50,6 +50,18 @@ app.include_router(urls_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 
 
+@app.get("/", tags=["System"])
+def root():
+    return {
+        "status": "online",
+        "service": settings.PROJECT_NAME,
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "api_v1": settings.API_V1_STR,
+        "message": "URL Shortener API is running. Visit /docs for interactive Swagger documentation."
+    }
+
+
 @app.get("/health", tags=["System"])
 def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
