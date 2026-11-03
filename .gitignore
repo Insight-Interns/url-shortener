@@ -2,7 +2,7 @@
 .env
 .env.*
 .env.local
-.env.example 
+!.env.example
 
 # Python
 __pycache__/
@@ -13,21 +13,22 @@ __pycache__/
 .venv/
 venv/
 
-# IDE
+# IDE / OS
 .vscode/
 .idea/
+.DS_Store
 
 # Testing
 .pytest_cache/
 .coverage
 
-# Logs
+# Logs / backups
 *.log
+*.sql.bak
 
-# OS files
-.DS_Store
-EOF
+# Node & Build artifacts
+node_modules/
+dist/
+build/
 
 Instructions.md
-
-node_modules/
