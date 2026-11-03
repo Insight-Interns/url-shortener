@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   esbuild: {
     target: "esnext",
+    supported: {
+      destructuring: true,
+    },
   },
   build: {
     target: "esnext",
@@ -13,6 +16,9 @@ export default defineConfig({
   optimizeDeps: {
     esbuildOptions: {
       target: "esnext",
+      supported: {
+        destructuring: true,
+      },
     },
   },
   server: {
