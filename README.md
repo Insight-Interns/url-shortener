@@ -61,7 +61,7 @@ The technology stack will be documented here based on the tools and frameworks u
 - Aditi Mehta
 - Samridhi Tripathi
 - Sankalp Sharma
-- Anuj Yadav
+- Anuj Yadav(Nyx😎)
 - Bhabani Shankar Panda
 - Chandransh Yadav
 
