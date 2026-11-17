@@ -15,19 +15,15 @@ export const Home: React.FC = () => {
     setApiError(null);
 
     try {
-      // Call backend API if running
       const response = await api.post("/shorten", data);
       setResult(response.data);
-    } catch (err: any) {
-      console.warn("Backend API not reachable or returned error, using local fallback preview:", err);
-      // Clean fallback demo for local frontend testing
-      const alias = data.custom_alias || Math.random().toString(36).substring(2, 8);
-      const host = window.location.origin;
-      setResult({
-        short_url: `${host}/${alias}`,
-        original_url: data.url,
-        created_at: new Date().toISOString(),
-      });
+    } catch (err: any) { 
+      console.error("URL shortening failed:", err);
+      setApiError(
+        err.response?.data?.detail ||
+          "Unable to shorten URL. Please check whether the backend is running."
+      );
+      setResult(null);
     } finally {
       setIsLoading(false);
     }

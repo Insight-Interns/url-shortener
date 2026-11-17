@@ -32,3 +32,10 @@ dist/
 build/
 
 Instructions.md
+
+# Local Python environments
+.venv*/
+
+# Local databases
+*.db
+*.sqlite3
