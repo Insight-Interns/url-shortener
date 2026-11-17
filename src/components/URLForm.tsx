@@ -44,7 +44,7 @@ export const URLForm: React.FC<URLFormProps> = ({ onSubmit, isLoading }) => {
     }
 
     await onSubmit({
-      url: normalizedUrl,
+      long_url: normalizedUrl,
       custom_alias: customAlias.trim() || undefined,
     });
   };

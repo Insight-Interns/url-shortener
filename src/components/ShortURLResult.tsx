@@ -33,7 +33,7 @@ export const ShortURLResult: React.FC<ShortURLResultProps> = ({ result }) => {
         </div>
 
         <div className="text-xs text-stone-500 truncate">
-          <span className="font-semibold">Original:</span> {result.original_url}
+          <span className="font-semibold">Original:</span> {result.long_url}
         </div>
       </div>
     </SketchCard>
