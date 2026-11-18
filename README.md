@@ -52,6 +52,15 @@ The technology stack will be documented here based on the tools and frameworks u
 
 4. Run the application using the appropriate development command.
 
+### Google OAuth (local development)
+
+Google sign-in uses a web-server OAuth client. In Google Cloud Console, add these exact values:
+
+- Authorized JavaScript origin: `http://127.0.0.1:5173`
+- Authorized redirect URI: `http://127.0.0.1:8000/api/v1/auth/google/callback`
+
+Copy the client ID and client secret into `backend/.env` using `backend/.env.example` as a template. Keep that file private and do not commit it. For an existing database created before Google sign-in, apply `backend/app/db/migrations/005_google_oauth.sql` once; a fresh database gets the new column from the model. Set `GOOGLE_REDIRECT_URI` to the exact callback URL registered in Google Cloud Console. For a deployed app, use HTTPS URLs and set `FRONTEND_URL`, `SESSION_SECRET_KEY`, `JWT_SECRET_KEY`, `ANALYTICS_SALT`, and `SESSION_COOKIE_SECURE=true` for that environment.
+
 ---
 
 ## 👥 Team Members

@@ -3,7 +3,7 @@ import axios, { type InternalAxiosRequestConfig, type AxiosError } from "axios";
 
 const baseURL: string =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:8000/api/v1";
+  "http://127.0.0.1:8000/api/v1";
 
 export const api = axios.create({
   baseURL,

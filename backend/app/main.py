@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Depends, HTTPException, status, Request  # type: ignore[import-not-found]
 from fastapi.responses import RedirectResponse  # type: ignore[import-not-found]
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore[import-not-found]
+from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session  # type: ignore[import-not-found]
 
 from app.core.config import settings
@@ -36,6 +37,12 @@ def on_startup():
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SESSION_SECRET_KEY,
+    same_site="lax",
+    https_only=settings.SESSION_COOKIE_SECURE,
+)
 
 
 # CORS configuration

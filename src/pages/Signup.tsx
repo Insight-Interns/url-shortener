@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import { SketchCard } from "../components/ui/SketchCard";
 import { SketchInput } from "../components/ui/SketchInput";
 import { SketchButton } from "../components/ui/SketchButton";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -162,6 +163,12 @@ export const Signup: React.FC = () => {
                 </p>
               </div>
             </form>
+            <div className="my-4 flex items-center gap-3 text-xs text-stone-500">
+              <span className="h-px flex-1 bg-stone-300" />
+              <span>or</span>
+              <span className="h-px flex-1 bg-stone-300" />
+            </div>
+            <GoogleSignInButton />
           </SketchCard>
         </div>
       </main>

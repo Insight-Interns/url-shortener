@@ -13,6 +13,14 @@ class SecuritySettings(BaseSettings):
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "dev-insecure-super-secret-key-change-in-production-123456789012")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # Google OAuth (web-server authorization-code flow)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://127.0.0.1:8000/api/v1/auth/google/callback"
+    FRONTEND_URL: str = "http://127.0.0.1:5173"
+    SESSION_SECRET_KEY: str = os.getenv("SESSION_SECRET_KEY", "dev-session-secret-change-before-deploy")
+    SESSION_COOKIE_SECURE: bool = False
     
     # Password Security
     BCRYPT_ROUNDS: int = 12

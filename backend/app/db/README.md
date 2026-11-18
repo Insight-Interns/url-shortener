@@ -13,6 +13,8 @@ Member-1 database contribution for the collaborative URL Shortener project.
 1. `001_create_url_mappings.sql`
 2. `002_create_click_events.sql`
 3. `003_create_indexes.sql`
+4. `004_create_users_table.sql`
+5. `005_google_oauth.sql` (adds the Google account identifier; run once before enabling Google sign-in)
 
 ## Local Development Setup
 

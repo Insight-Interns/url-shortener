@@ -1,5 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import secrets
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from authlib.integrations.starlette_client import OAuth, OAuthError
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -15,8 +20,89 @@ from app.security.auth import (
     create_access_token,
     get_token_claims,
 )
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+oauth = OAuth()
+if settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET:
+    oauth.register(
+        name="google",
+        client_id=settings.GOOGLE_CLIENT_ID,
+        client_secret=settings.GOOGLE_CLIENT_SECRET,
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={
+            "scope": "openid email profile",
+            "token_endpoint_auth_method": "client_secret_post",
+        },
+    )
 
 router = APIRouter(prefix="/auth", tags=["Authentication & Security"])
+
+
+@router.get("/google/login", name="google_login", summary="Start Google sign-in")
+async def google_login(request: Request):
+    google = oauth.create_client("google")
+    if google is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured on this server.",
+        )
+    return await google.authorize_redirect(request, settings.GOOGLE_REDIRECT_URI)
+
+
+@router.get("/google/callback", name="google_callback", summary="Complete Google sign-in")
+async def google_callback(request: Request, db: Session = Depends(get_db)):
+    google = oauth.create_client("google")
+    if google is None:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=not_configured")
+
+    try:
+        token = await google.authorize_access_token(request)
+        profile = token.get("userinfo") or await google.userinfo(token=token)
+    except OAuthError as exc:
+        # Do not log the callback URL, authorization code, or token response.
+        logger.warning("Google OAuth callback failed (%s): %s", exc.error, exc.description)
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=google_sign_in_failed")
+
+    google_sub = profile.get("sub")
+    email = str(profile.get("email") or "").strip().lower()
+    if not google_sub or not email or profile.get("email_verified") is not True:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=unverified_google_account")
+
+    user = db.query(User).filter(User.google_sub == google_sub).first()
+    if user is None:
+        user = db.query(User).filter(User.email == email).first()
+        if user and user.google_sub and user.google_sub != google_sub:
+            return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=account_already_linked")
+        if user is None:
+            # This password is random and never returned to the user; Google is the login method.
+            user = User(
+                email=email,
+                hashed_password=hash_password(secrets.token_urlsafe(48)),
+                full_name=profile.get("name"),
+                tier="registered",
+                is_active=True,
+                google_sub=google_sub,
+            )
+            db.add(user)
+        else:
+            user.google_sub = google_sub
+
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Google account provisioning failed (%s)", type(exc).__name__)
+            return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=account_setup_failed")
+
+    if not user.is_active:
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?oauth_error=account_disabled")
+
+    app_token = create_access_token(subject=user.id, tier=user.tier)
+    # Put the app token in the URL fragment: browsers do not send fragments to the server.
+    return RedirectResponse(f"{settings.FRONTEND_URL}/auth/callback#access_token={app_token}")
 
 
 @router.post(

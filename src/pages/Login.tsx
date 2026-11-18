@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { LogIn, ArrowLeft } from "lucide-react";
 import Navbar from "../components/Navbar";
 import { SketchCard } from "../components/ui/SketchCard";
 import { SketchInput } from "../components/ui/SketchInput";
 import { SketchButton } from "../components/ui/SketchButton";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export const Login: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -116,6 +118,17 @@ export const Login: React.FC = () => {
                 </p>
               </div>
             </form>
+            <div className="my-4 flex items-center gap-3 text-xs text-stone-500">
+              <span className="h-px flex-1 bg-stone-300" />
+              <span>or</span>
+              <span className="h-px flex-1 bg-stone-300" />
+            </div>
+            <GoogleSignInButton />
+            {searchParams.get("oauth_error") && (
+              <p className="mt-3 text-center text-sm text-red-700" role="alert">
+                Google sign-in could not be completed. Please try again.
+              </p>
+            )}
           </SketchCard>
         </div>
       </main>
