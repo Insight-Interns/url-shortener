@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function OAuthCallback() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [message, setMessage] = useState("Completing Google sign-in...");
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function OAuthCallback() {
     localStorage.setItem("auth_token", accessToken);
     api.get("/auth/me")
       .then(({ data }) => {
-        localStorage.setItem("auth_user", JSON.stringify(data));
+        login(accessToken, data);
         navigate("/", {
           replace: true,
           state: { authMessage: "Successfully signed in" },
@@ -30,7 +32,7 @@ export default function OAuthCallback() {
         localStorage.removeItem("auth_user");
         setMessage("Could not verify your account. Please try again.");
       });
-  }, [navigate]);
+  }, [navigate, login]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] px-4">

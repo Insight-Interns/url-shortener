@@ -12,10 +12,16 @@ export interface ShortenURLResponse {
   expires_at?: string | null;
 }
 
+export interface URLHistoryItem extends ShortenURLResponse {
+  id?: string;
+  click_count?: number;
+}
+
 export interface User {
   id: string;
   email: string;
   full_name?: string;
   tier?: string;
 }
+
 

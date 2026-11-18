@@ -5,6 +5,7 @@ import URLForm from "../components/URLForm";
 import ShortURLResult from "../components/ShortURLResult";
 import { ShortenURLRequest, ShortenURLResponse } from "../types";
 import { api } from "../services/api";
+import { saveLinkToHistory } from "../services/historyStorage";
 
 export const Home: React.FC = () => {
   const location = useLocation();
@@ -35,6 +36,7 @@ export const Home: React.FC = () => {
     try {
       const response = await api.post("/shorten", data);
       setResult(response.data);
+      saveLinkToHistory(response.data);
     } catch (err: any) { 
       console.error("URL shortening failed:", err);
       setApiError(

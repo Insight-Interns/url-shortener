@@ -6,18 +6,21 @@ import { SketchCard } from "../components/ui/SketchCard";
 import { SketchInput } from "../components/ui/SketchInput";
 import { SketchButton } from "../components/ui/SketchButton";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import { api } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export const Login: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string; password?: string; form?: string } = {};
 
     if (!email.trim()) {
       newErrors.email = "Email is required";
@@ -35,10 +38,24 @@ export const Login: React.FC = () => {
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-      setTimeout(() => {
+      try {
+        const response = await api.post("/auth/login", {
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        login(response.data.access_token, response.data.user);
+        navigate("/", {
+          replace: true,
+          state: { authMessage: `Welcome back, ${response.data.user.full_name || response.data.user.email}!` },
+        });
+      } catch (err: any) {
+        console.error("Login failed", err);
+        setErrors({
+          form: err.response?.data?.detail || "Invalid email or password.",
+        });
+      } finally {
         setIsLoading(false);
-        navigate("/");
-      }, 700);
+      }
     }
   };
 
@@ -62,6 +79,11 @@ export const Login: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {errors.form && (
+                <div className="p-3 bg-red-50 border border-red-500 rounded text-red-700 font-sketch text-sm">
+                  {errors.form}
+                </div>
+              )}
               <SketchInput
                 label="Email Address"
                 type="email"

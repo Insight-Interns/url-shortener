@@ -6,9 +6,12 @@ import { SketchCard } from "../components/ui/SketchCard";
 import { SketchInput } from "../components/ui/SketchInput";
 import { SketchButton } from "../components/ui/SketchButton";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import { api } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,6 +21,7 @@ export const Signup: React.FC = () => {
     email?: string;
     password?: string;
     confirmPassword?: string;
+    form?: string;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,6 +32,7 @@ export const Signup: React.FC = () => {
       email?: string;
       password?: string;
       confirmPassword?: string;
+      form?: string;
     } = {};
 
     if (!name.trim()) {
@@ -42,8 +47,14 @@ export const Signup: React.FC = () => {
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password = "Password must contain at least one uppercase letter";
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password = "Password must contain at least one lowercase letter";
+    } else if (!/\d/.test(password)) {
+      newErrors.password = "Password must contain at least one number";
     }
 
     if (password !== confirmPassword) {
@@ -54,10 +65,25 @@ export const Signup: React.FC = () => {
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-      setTimeout(() => {
+      try {
+        const response = await api.post("/auth/register", {
+          email: email.trim().toLowerCase(),
+          password,
+          full_name: name.trim(),
+        });
+        login(response.data.access_token, response.data.user);
+        navigate("/", {
+          replace: true,
+          state: { authMessage: `Account created! Welcome, ${response.data.user.full_name || response.data.user.email}!` },
+        });
+      } catch (err: any) {
+        console.error("Registration failed", err);
+        setErrors({
+          form: err.response?.data?.detail || "Registration failed. Please try again.",
+        });
+      } finally {
         setIsLoading(false);
-        navigate("/");
-      }, 700);
+      }
     }
   };
 
@@ -81,6 +107,11 @@ export const Signup: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+              {errors.form && (
+                <div className="p-3 bg-red-50 border border-red-500 rounded text-red-700 font-sketch text-sm">
+                  {errors.form}
+                </div>
+              )}
               <SketchInput
                 label="Full Name"
                 type="text"
