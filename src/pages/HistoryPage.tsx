@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   History,
   Calendar,
@@ -9,12 +9,15 @@ import {
   PlusCircle,
   RefreshCw,
   Search,
+  Lock,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import { SketchCard } from "../components/ui/SketchCard";
 import { SketchButton } from "../components/ui/SketchButton";
 import CopyButton from "../components/CopyButton";
 import { URLHistoryItem } from "../types";
+import { useAuth } from "../context/AuthContext";
+import { api } from "../services/api";
 import {
   getStoredLinks,
   removeLinkFromHistory,
@@ -37,6 +40,9 @@ const MONTH_NAMES = [
 ];
 
 export const HistoryPage: React.FC = () => {
+  const { user, isAuthenticated, token } = useAuth();
+  const navigate = useNavigate();
+
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear().toString();
   const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, "0");
@@ -46,14 +52,59 @@ export const HistoryPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
   const [currentMonthOnly, setCurrentMonthOnly] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Fetch URLs created by the authenticated user from the backend API
+  const fetchUserLinks = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      const response = await api.get("/urls");
+      const apiLinks: URLHistoryItem[] = response.data.map((item: any) => ({
+        id: item.id,
+        short_code: item.short_code,
+        short_url: `http://localhost:8000/${item.short_code}`,
+        long_url: item.long_url,
+        created_at: item.created_at,
+        expires_at: item.expires_at,
+        click_count: item.click_count,
+      }));
+
+      // Combine with local storage items gracefully if needed
+      const localLinks = getStoredLinks();
+      const map = new Map<string, URLHistoryItem>();
+      apiLinks.forEach((l) => map.set(l.short_code, l));
+      localLinks.forEach((l) => {
+        if (!map.has(l.short_code)) {
+          map.set(l.short_code, l);
+        }
+      });
+
+      setLinks(Array.from(map.values()));
+    } catch (err) {
+      console.error("Failed to load user links from backend, falling back to local history", err);
+      setLinks(getStoredLinks());
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    setLinks(getStoredLinks());
-  }, []);
+    if (isAuthenticated) {
+      fetchUserLinks();
+    }
+  }, [isAuthenticated, fetchUserLinks]);
 
-  const handleDelete = (shortCode: string) => {
-    const updated = removeLinkFromHistory(shortCode);
-    setLinks(updated);
+  const handleDelete = async (item: URLHistoryItem) => {
+    if (item.id) {
+      try {
+        await api.delete(`/urls/${item.id}`);
+      } catch (e) {
+        console.error("Failed to delete link on backend", e);
+      }
+    }
+    const updated = removeLinkFromHistory(item.short_code);
+    setLinks((prev) => prev.filter((l) => l.short_code !== item.short_code));
   };
 
   const handleClearAll = () => {
@@ -123,6 +174,37 @@ export const HistoryPage: React.FC = () => {
   ]);
 
   const currentMonthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentYear}`;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#faf8f5]">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <SketchCard variant="yellow" className="text-center p-8 max-w-md">
+            <Lock className="w-10 h-10 text-amber-800 mx-auto mb-3" />
+            <h2 className="font-sketch text-2xl font-bold text-stone-900 mb-2">
+              Authentication Required
+            </h2>
+            <p className="text-stone-600 text-sm mb-6">
+              Link history is private and only available to logged in users.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Link to="/login">
+                <SketchButton size="md" variant="primary">
+                  Log In
+                </SketchButton>
+              </Link>
+              <Link to="/signup">
+                <SketchButton size="md" variant="secondary">
+                  Sign Up
+                </SketchButton>
+              </Link>
+            </div>
+          </SketchCard>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf8f5]">
@@ -360,8 +442,8 @@ export const HistoryPage: React.FC = () => {
                       <CopyButton text={link.short_url} />
                       <button
                         type="button"
-                        onClick={() => handleDelete(link.short_code)}
-                        title="Delete from history"
+                        onClick={() => handleDelete(link)}
+                        title="Delete link"
                         className="p-2 border border-stone-300 rounded hover:bg-red-50 hover:border-red-400 text-stone-400 hover:text-red-600 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />

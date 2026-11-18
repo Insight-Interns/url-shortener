@@ -43,15 +43,18 @@ export const Navbar: React.FC = () => {
             </Link>
           )}
 
-          <Link to="/history">
-            <SketchButton
-              size="sm"
-              variant={location.pathname === "/history" ? "primary" : "secondary"}
-            >
-              <History className="w-4 h-4" />
-              <span>History</span>
-            </SketchButton>
-          </Link>
+          {/* History button only visible to logged in users */}
+          {isAuthenticated && user && (
+            <Link to="/history">
+              <SketchButton
+                size="sm"
+                variant={location.pathname === "/history" ? "primary" : "secondary"}
+              >
+                <History className="w-4 h-4" />
+                <span>History</span>
+              </SketchButton>
+            </Link>
+          )}
 
           {/* If authenticated: Show Name & Email Badge with Logout */}
           {isAuthenticated && user ? (
