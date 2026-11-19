@@ -22,7 +22,7 @@ export default function OAuthCallback() {
     api.get("/auth/me")
       .then(({ data }) => {
         login(accessToken, data);
-        navigate("/", {
+        navigate("/dashboard", {
           replace: true,
           state: { authMessage: "Successfully signed in" },
         });

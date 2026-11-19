@@ -61,6 +61,10 @@ Google sign-in uses a web-server OAuth client. In Google Cloud Console, add thes
 
 Copy the client ID and client secret into `backend/.env` using `backend/.env.example` as a template. Keep that file private and do not commit it. For an existing database created before Google sign-in, apply `backend/app/db/migrations/005_google_oauth.sql` once; a fresh database gets the new column from the model. Set `GOOGLE_REDIRECT_URI` to the exact callback URL registered in Google Cloud Console. For a deployed app, use HTTPS URLs and set `FRONTEND_URL`, `SESSION_SECRET_KEY`, `JWT_SECRET_KEY`, `ANALYTICS_SALT`, and `SESSION_COOKIE_SECURE=true` for that environment.
 
+### Link plans
+
+The Free plan allows links to remain active for up to 10 days. Plus allows up to 30 days, and Pro can create links that never expire. These limits are enforced by the backend. The plans page is informational for now; payment and plan upgrades are not enabled. After upgrading an existing database, run `python -m app.db.migrations.migration_006_plan_expiration` from the `backend` directory to normalize legacy plan names and cap existing links.
+
 ---
 
 ## 👥 Team Members

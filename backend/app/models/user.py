@@ -13,7 +13,7 @@ class User(Base):
     google_sub = Column(String(255), unique=True, nullable=True, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=True)
-    tier = Column(String(20), nullable=False, default="registered")  # registered, premium, admin
+    tier = Column(String(20), nullable=False, default="free")  # free, plus, pro, admin
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

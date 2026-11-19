@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Link2, LogIn, Home as HomeIcon, History, User as UserIcon, LogOut, ChevronDown } from "lucide-react";
+import { Link2, LogIn, Home as HomeIcon, History, User as UserIcon, LogOut, ChevronDown, Crown } from "lucide-react";
 import { SketchButton } from "./ui/SketchButton";
 import { useAuth } from "../context/AuthContext";
 
@@ -43,15 +43,22 @@ export const Navbar: React.FC = () => {
             </Link>
           )}
 
-          {/* History button only visible to logged in users */}
+          <Link to="/plans">
+            <SketchButton size="sm" variant={location.pathname === "/plans" ? "primary" : "secondary"}>
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">Go Premium</span>
+            </SketchButton>
+          </Link>
+
+          {/* Dashboard button only visible to logged in users */}
           {isAuthenticated && user && (
-            <Link to="/history">
+            <Link to="/dashboard">
               <SketchButton
                 size="sm"
-                variant={location.pathname === "/history" ? "primary" : "secondary"}
+                variant={location.pathname === "/history" || location.pathname === "/dashboard" ? "primary" : "secondary"}
               >
                 <History className="w-4 h-4" />
-                <span>History</span>
+                <span>Dashboard</span>
               </SketchButton>
             </Link>
           )}

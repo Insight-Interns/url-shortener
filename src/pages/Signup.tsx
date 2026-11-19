@@ -72,14 +72,15 @@ export const Signup: React.FC = () => {
           full_name: name.trim(),
         });
         login(response.data.access_token, response.data.user);
-        navigate("/", {
+        navigate("/dashboard", {
           replace: true,
-          state: { authMessage: `Account created! Welcome, ${response.data.user.full_name || response.data.user.email}!` },
+          state: { authMessage: "Successfully signed in" },
         });
       } catch (err: any) {
         console.error("Registration failed", err);
+        const detail = err.response?.data?.detail;
         setErrors({
-          form: err.response?.data?.detail || "Registration failed. Please try again.",
+          form: typeof detail === "string" ? detail : "Registration failed. Please try again.",
         });
       } finally {
         setIsLoading(false);

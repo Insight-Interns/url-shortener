@@ -15,6 +15,9 @@ Member-1 database contribution for the collaborative URL Shortener project.
 3. `003_create_indexes.sql`
 4. `004_create_users_table.sql`
 5. `005_google_oauth.sql` (adds the Google account identifier; run once before enabling Google sign-in)
+6. `migration_006_plan_expiration.py` (normalizes legacy plans and caps existing links)
+
+Run the plan migration from the `backend` directory with `python -m app.db.migrations.migration_006_plan_expiration`.
 
 ## Local Development Setup
 
