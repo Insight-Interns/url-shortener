@@ -81,7 +81,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
                 email=email,
                 hashed_password=hash_password(secrets.token_urlsafe(48)),
                 full_name=profile.get("name"),
-                tier="registered",
+                tier="free",
                 is_active=True,
                 google_sub=google_sub,
             )
@@ -136,7 +136,7 @@ def register_user(payload: UserRegisterRequest, db: Session = Depends(get_db)):
         email=payload.email.lower(),
         hashed_password=hashed_pwd,
         full_name=payload.full_name,
-        tier="registered",
+        tier="free",
         is_active=True
     )
     db.add(new_user)

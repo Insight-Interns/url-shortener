@@ -30,8 +30,6 @@ export const Login: React.FC = () => {
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
     }
 
     setErrors(newErrors);
@@ -44,14 +42,15 @@ export const Login: React.FC = () => {
           password,
         });
         login(response.data.access_token, response.data.user);
-        navigate("/", {
+        navigate("/dashboard", {
           replace: true,
-          state: { authMessage: `Welcome back, ${response.data.user.full_name || response.data.user.email}!` },
+          state: { authMessage: "Successfully signed in" },
         });
       } catch (err: any) {
         console.error("Login failed", err);
+        const detail = err.response?.data?.detail;
         setErrors({
-          form: err.response?.data?.detail || "Invalid email or password.",
+          form: typeof detail === "string" ? detail : "Invalid email or password.",
         });
       } finally {
         setIsLoading(false);

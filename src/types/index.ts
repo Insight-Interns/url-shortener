@@ -1,6 +1,7 @@
 export interface ShortenURLRequest {
   long_url: string;
   custom_alias?: string;
+  expires_in_days?: number;
   expires_at?: string;
 }
 

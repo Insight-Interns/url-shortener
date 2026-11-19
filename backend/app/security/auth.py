@@ -131,15 +131,24 @@ def get_optional_token_claims(token: Optional[str] = Depends(oauth2_scheme)) -> 
         return None
 
 
-def verify_resource_ownership(resource_owner_id: Optional[str], current_user_id: Optional[str], is_admin: bool = False) -> None:
+def verify_resource_ownership(
+    resource_owner_id: Optional[str],
+    current_user_id: Optional[str],
+    is_admin: bool = False,
+    allow_anonymous_resource: bool = True,
+) -> None:
     """
     Enforces object-level authorization:
     - Protects user-owned links and analytics from unauthorized access (IDOR prevention).
     - If resource belongs to a user, caller MUST be that user (or an admin).
     """
     if not resource_owner_id:
-        # Anonymous resource
-        return
+        if allow_anonymous_resource:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This resource has no owner and cannot be managed by this account.",
+        )
 
     if not current_user_id:
         raise HTTPException(

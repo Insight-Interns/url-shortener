@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   History,
   Calendar,
@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Lock,
+  Crown,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import { SketchCard } from "../components/ui/SketchCard";
@@ -18,11 +19,7 @@ import CopyButton from "../components/CopyButton";
 import { URLHistoryItem } from "../types";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
-import {
-  getStoredLinks,
-  removeLinkFromHistory,
-  clearLinkHistory,
-} from "../services/historyStorage";
+import { normalizePlanTier, PLAN_DETAILS } from "../config/plans";
 
 const MONTH_NAMES = [
   "January",
@@ -41,6 +38,7 @@ const MONTH_NAMES = [
 
 export const HistoryPage: React.FC = () => {
   const { user, isAuthenticated, token } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const currentDate = new Date();
@@ -48,42 +46,40 @@ export const HistoryPage: React.FC = () => {
   const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, "0");
 
   const [links, setLinks] = useState<URLHistoryItem[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth);
-  const [currentMonthOnly, setCurrentMonthOnly] = useState<boolean>(true);
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [currentMonthOnly, setCurrentMonthOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+
+  useEffect(() => {
+    const message = (location.state as { authMessage?: string } | null)?.authMessage;
+    if (message) {
+      setAuthMessage(message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!authMessage) return;
+    const timeout = window.setTimeout(() => setAuthMessage(""), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [authMessage]);
 
   // Fetch URLs created by the authenticated user from the backend API
   const fetchUserLinks = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      const response = await api.get("/urls");
-      const apiLinks: URLHistoryItem[] = response.data.map((item: any) => ({
-        id: item.id,
-        short_code: item.short_code,
-        short_url: `http://localhost:8000/${item.short_code}`,
-        long_url: item.long_url,
-        created_at: item.created_at,
-        expires_at: item.expires_at,
-        click_count: item.click_count,
-      }));
-
-      // Combine with local storage items gracefully if needed
-      const localLinks = getStoredLinks();
-      const map = new Map<string, URLHistoryItem>();
-      apiLinks.forEach((l) => map.set(l.short_code, l));
-      localLinks.forEach((l) => {
-        if (!map.has(l.short_code)) {
-          map.set(l.short_code, l);
-        }
-      });
-
-      setLinks(Array.from(map.values()));
+      const response = await api.get<URLHistoryItem[]>("/urls");
+      setLinks(response.data);
+      setLoadError("");
     } catch (err) {
-      console.error("Failed to load user links from backend, falling back to local history", err);
-      setLinks(getStoredLinks());
+      console.error("Failed to load user links from backend", err);
+      setLinks([]);
+      setLoadError("We couldn't load your saved links. Check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -96,21 +92,14 @@ export const HistoryPage: React.FC = () => {
   }, [isAuthenticated, fetchUserLinks]);
 
   const handleDelete = async (item: URLHistoryItem) => {
-    if (item.id) {
-      try {
-        await api.delete(`/urls/${item.id}`);
-      } catch (e) {
-        console.error("Failed to delete link on backend", e);
-      }
-    }
-    const updated = removeLinkFromHistory(item.short_code);
-    setLinks((prev) => prev.filter((l) => l.short_code !== item.short_code));
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm("Are you sure you want to clear your local link history?")) {
-      clearLinkHistory();
-      setLinks([]);
+    if (!item.id) return;
+    try {
+      await api.delete(`/urls/${item.id}`);
+      setLinks((prev) => prev.filter((link) => link.id !== item.id));
+      setLoadError("");
+    } catch (error) {
+      console.error("Failed to delete link on backend", error);
+      setLoadError("We couldn't delete that link. Please refresh and try again.");
     }
   };
 
@@ -219,11 +208,11 @@ export const HistoryPage: React.FC = () => {
                 <History className="w-5 h-5 text-stone-900" />
               </span>
               <h1 className="font-sketch text-3xl font-bold text-stone-900">
-                Links History
+                Your Dashboard
               </h1>
             </div>
             <p className="text-stone-600 text-sm">
-              All shortened links stored locally on this browser.
+              Your links are saved to your account and available when you sign in.
             </p>
           </div>
 
@@ -234,19 +223,27 @@ export const HistoryPage: React.FC = () => {
                 <span>Shorten New</span>
               </SketchButton>
             </Link>
-            {links.length > 0 && (
-              <SketchButton
-                size="sm"
-                variant="danger"
-                onClick={handleClearAll}
-                title="Clear all saved history"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Clear</span>
-              </SketchButton>
-            )}
           </div>
         </div>
+
+        <SketchCard variant="yellow" className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 font-sketch font-bold text-stone-900">
+              <Crown className="h-4 w-4 text-amber-800" />
+              {PLAN_DETAILS[normalizePlanTier(user?.tier)].name} plan
+            </p>
+            <p className="text-sm text-stone-700">
+              {PLAN_DETAILS[normalizePlanTier(user?.tier)].maxDays === null
+                ? "Your links can stay active permanently."
+                : `Your links can stay active for up to ${PLAN_DETAILS[normalizePlanTier(user?.tier)].maxDays} days.`}
+            </p>
+          </div>
+          <Link to="/plans">
+            <SketchButton size="sm" variant="secondary">Go Premium</SketchButton>
+          </Link>
+        </SketchCard>
+
+        {loadError && <p className="mb-4 rounded border border-red-400 bg-red-50 p-3 text-sm text-red-700" role="alert">{loadError}</p>}
 
         {/* Filter Controls Card */}
         <SketchCard variant="white" className="mb-6">
@@ -353,24 +350,29 @@ export const HistoryPage: React.FC = () => {
               Showing {filteredLinks.length} {filteredLinks.length === 1 ? "link" : "links"}
             </span>
             <button
-              onClick={() => setLinks(getStoredLinks())}
-              className="hover:text-stone-800 flex items-center gap-1 cursor-pointer"
+              onClick={fetchUserLinks}
+              disabled={isLoading}
+              className="hover:text-stone-800 flex items-center gap-1 cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className="w-3 h-3" />
               <span>Refresh</span>
             </button>
           </div>
 
-          {filteredLinks.length === 0 ? (
+          {isLoading ? (
+            <SketchCard variant="white" className="py-8 text-center text-stone-600">Loading your saved links…</SketchCard>
+          ) : filteredLinks.length === 0 ? (
             <SketchCard variant="yellow" className="text-center py-10">
               <History className="w-10 h-10 text-stone-400 mx-auto mb-2" />
               <h3 className="font-sketch text-lg font-bold text-stone-800 mb-1">
-                No Links Found
+                {links.length === 0 ? "No saved links yet" : "No Links Found"}
               </h3>
               <p className="text-xs text-stone-600 max-w-sm mx-auto mb-4">
-                {currentMonthOnly
-                  ? `You haven't shortened any links during ${currentMonthLabel}.`
-                  : "No links match the selected year and month filters."}
+                {links.length === 0
+                  ? "Links you create while signed in will appear here."
+                  : currentMonthOnly
+                    ? `You haven't shortened any links during ${currentMonthLabel}.`
+                    : "No links match the selected year and month filters."}
               </p>
               {currentMonthOnly && (
                 <button
@@ -435,6 +437,8 @@ export const HistoryPage: React.FC = () => {
                             Expires: {new Date(link.expires_at).toLocaleDateString()}
                           </span>
                         )}
+                        {!link.expires_at && <span className="text-green-700">Never expires</span>}
+                        {typeof link.click_count === "number" && <span>{link.click_count} clicks</span>}
                       </div>
                     </div>
 
@@ -456,6 +460,15 @@ export const HistoryPage: React.FC = () => {
           )}
         </div>
       </main>
+      {authMessage && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-md border-2 border-stone-800 bg-amber-100 px-5 py-3 font-sketch font-semibold text-stone-900 shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          {authMessage}
+        </div>
+      )}
     </div>
   );
 };

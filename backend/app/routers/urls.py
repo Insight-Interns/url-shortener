@@ -1,7 +1,7 @@
 
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from app.db.session import get_db
 from app.models.url import URLMapping
+from app.models.user import User
 from app.models.click import ClickEvent
 from app.schemas.url import (
     ShortenURLRequest,
@@ -27,6 +28,7 @@ from app.security.auth import (
     verify_resource_ownership
 )
 from app.security.rate_limiter import check_rate_limit
+from app.services.plans import normalize_tier, resolve_link_expiration
 
 
 router = APIRouter(tags=["URLs & Redirection"])
@@ -36,19 +38,6 @@ def generate_short_code(length: int = 7) -> str:
     """Generate a cryptographically secure Base62 short code."""
     chars = string.ascii_letters + string.digits
     return "".join(secrets.choice(chars) for _ in range(length))
-
-
-def normalize_expiration(expiration: Optional[datetime]) -> Optional[datetime]:
-    """Normalize expiration timestamps to UTC-naive datetime."""
-    if expiration is None:
-        return None
-
-    if expiration.tzinfo is not None:
-        expiration = expiration.astimezone(
-            timezone.utc
-        ).replace(tzinfo=None)
-
-    return expiration
 
 
 @router.post(
@@ -78,14 +67,25 @@ def shorten_url(
             detail=str(e)
         )
 
-    # 2. Validate expiration date
-    expiration = normalize_expiration(payload.expires_at)
+    # 2. Resolve the tier from the database and enforce its maximum lifetime.
+    user_id = claims.get("sub") if claims else None
+    if user_id:
+        current_user = db.query(User).filter(User.id == user_id).first()
+        if not current_user or not current_user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your account is not available. Please sign in again.",
+            )
+        user_id = current_user.id
+        tier = normalize_tier(current_user.tier)
+    else:
+        tier = "free"
 
-    if expiration and expiration <= datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Expiration date must be in the future."
-        )
+    expiration = resolve_link_expiration(
+        tier,
+        payload.expires_in_days,
+        payload.expires_at,
+    )
 
     # 3. Determine short code
     if payload.custom_alias:
@@ -132,8 +132,6 @@ def shorten_url(
             )
 
     # 4. Associate creator
-    user_id = claims.get("sub") if claims else None
-
     # 5. Create database mapping
     mapping = URLMapping(
         short_code=short_code,
@@ -176,6 +174,7 @@ def shorten_url(
     summary="List URLs owned by the authenticated user"
 )
 def list_user_urls(
+    request: Request,
     claims: Dict[str, Any] = Depends(get_token_claims),
     db: Session = Depends(get_db)
 ):
@@ -203,6 +202,7 @@ def list_user_urls(
             URLItemResponse(
                 id=url.id,
                 short_code=url.short_code,
+                short_url=f"{str(request.base_url).rstrip('/')}/{url.short_code}",
                 long_url=url.original_url,
                 created_at=url.created_at,
                 expires_at=url.expires_at,
@@ -244,7 +244,8 @@ def delete_user_url(
     verify_resource_ownership(
         url_mapping.created_by,
         current_user_id,
-        is_admin
+        is_admin,
+        allow_anonymous_resource=False,
     )
 
     try:

@@ -87,10 +87,10 @@ async def check_rate_limit(
     
     if user_claims and "sub" in user_claims:
         user_id = user_claims["sub"]
-        tier = tier_override or user_claims.get("tier", "registered")
+        tier = tier_override or user_claims.get("tier", "free")
         key = f"user:{user_id}"
         
-        if tier == "premium" or tier == "admin":
+        if tier in {"pro", "premium", "admin"}:
             limit = settings.RATE_LIMIT_PREMIUM_PER_HOUR
         else:
             limit = settings.RATE_LIMIT_REGISTERED_PER_HOUR

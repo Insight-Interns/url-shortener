@@ -6,6 +6,7 @@ from datetime import datetime
 class ShortenURLRequest(BaseModel):
     long_url: str = Field(..., description="The original long destination URL")
     custom_alias: Optional[str] = Field(None, min_length=3, max_length=30, description="Optional custom short code")
+    expires_in_days: Optional[int] = Field(None, ge=0, le=30, description="Requested link lifetime in days; 0 means no expiry for Pro")
     expires_at: Optional[datetime] = Field(None, description="Optional ISO timestamp for link expiration")
 
 
@@ -24,6 +25,7 @@ class BulkShortenRequest(BaseModel):
 class URLItemResponse(BaseModel):
     id: str
     short_code: str
+    short_url: str
     long_url: str
     created_at: datetime
     expires_at: Optional[datetime]
